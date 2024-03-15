@@ -1,0 +1,289 @@
+---
+title: "Data Science Capstone"
+author: "Chahana Dahal"
+date: "5th Feburary"
+output: html_notebook
+---
+
+## Introduction 
+
+The Spotify_Data.csv comprises tracks sourced from the Spotify API, specifically chosen from playlists representing the hottest hits across the years 2013 to 2023. It offers a comprehensive overview of track attributes, encompassing essential details such as titles, artists, albums, durations, popularity ratings, release years, and various audio features. This dataset is perfect for researchers, analysts, and music enthusiasts to explore trends, correlations, and patterns in today's music. Whether studying musical trends, identifying chart-topping characteristics, or exploring diverse genres, this dataset is a valuable tool for music analysis.
+
+
+## Preliminaries
+#libraries
+```{r}
+library(dplyr)
+library(mosaicData)
+library(ggplot2)
+library(openintro)
+library(broom)
+library(mosaic)
+library(tidyverse)
+
+```
+
+
+
+```{r}
+#dataset
+dataset_file <- 'spotify_data.csv'
+spotify_data <- read.csv(dataset_file)
+spotify_data
+```
+
+```{r}
+View(spotify_data)
+```
+
+We can see that some variables have missing values, indicated by "NA". 
+
+## Exploratory data analysis
+
+```{r}
+str(spotify_data)
+```
+
+We can see that there are 202 observations of 12 variables. Most of the variables are numeric, but some of them are factors
+
+## Summary
+```{r}
+summary(spotify_data)
+```
+
+## a table of missing values
+
+```{r}
+spotify_data %>% summarise_all(funs(sum(is.na(.))))
+
+```
+
+We can see that the this dataset has no missing values.
+
+
+
+## the distribution of  Danceability vs Energy in the dataset 
+
+
+```{r}
+ggplot(spotify_data, aes(x = Danceability, y = Energy)) +
+  geom_point() +
+  labs(x = "Danceability", y = "Energy", title = "Scatter Plot of Danceability vs Energy")
+```
+There seems to be non linear relationship.
+
+
+
+## Multiple Regression 
+
+## Using a numerical response variable, one numerical explanatory variable, and one categorical explanatory variable. 
+
+I want to predict Popularity, a numerical response variable, using Danceability, a numerical explanatory variable, and Explicit.Content, a categorical explanatory variable indicating whether the track contains explicit content.
+
+
+
+```{r}
+# Perform multiple regression
+spotify_lm <- lm(Popularity ~ Danceability + Explicit.Content, data = spotify_data)
+```
+
+
+
+```{r}
+spotify_tidy <- tidy(spotify_lm, conf.int = TRUE)
+spotify_tidy
+```
+
+```{r}
+spotify_data_aug <- augment(spotify_lm)
+spotify_data_aug
+```
+
+
+##Check scatterplots and residual plots. (But even if the scatterplots and residual plots show that a multiple regression analysis is inappropriate, go ahead and run the analysis anyway.)
+
+```{r}
+# Scatterplot with regression line for Danceability
+ggplot(spotify_data, aes(x = Danceability, y = Popularity)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+
+
+
+```{r}
+# Scatterplot with regression line for Explicit.Content
+ggplot(spotify_data, aes(x = Explicit.Content, y = Popularity, color = Explicit.Content)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+
+```
+
+```{r}
+# Boxplot for Explicit.Content
+ggplot(spotify_data, aes(x = Explicit.Content, y = Popularity, color = Explicit.Content)) +
+  geom_boxplot()
+```
+
+```{r}
+# Residual plots
+ggplot(spotify_data_aug, aes(sample = .resid)) +
+  geom_qq()
+```
+
+
+
+## Interpret the ANOVA table for the model.
+
+
+```{r}
+spotify_lm <- lm(Popularity ~ Danceability + Explicit.Content, data = spotify_data)
+summary(spotify_lm)
+```
+The results suggest that Danceability and Explicit Content were both statistically significant predictors of Popularity, as evidenced by their respective p-values of 0.00415 and 0.00551, both less than the conventional threshold of 0.05. This indicates that there is a significant relationship between these variables and Popularity in the dataset. However, the intercept term was also statistically significant with a p-value less than 0.001, suggesting a significant relationship between the intercept and Popularity.
+
+The multiple R-squared value is 0.07802, indicating that the model explains approximately 7.8% of the variability in Popularity. However, the adjusted R-squared value, which accounts for the number of predictors in the model, is 0.0662, indicating that the model fit is not strong.
+
+The F-statistic is 6.6 with a p-value of 0.001772, indicating that the overall model is statistically significant. This suggests that Danceability and Explicit Content together have a significant impact on Popularity.
+
+
+
+```{r}
+spotify_glance <- glance( spotify_lm)
+spotify_glance
+```
+
+```{r}
+SSTotal <- sum((spotify_data_aug$Popularity - mean(spotify_data_aug$Popularity))^2)
+SSTotal
+```
+
+```{r}
+SSModel <- sum((spotify_data_aug$.fitted - mean(spotify_data_aug$Popularity))^2)
+SSModel
+```
+
+```{r}
+SSE <- sum((spotify_data_aug$Popularity - spotify_data_aug$.fitted)^2)
+SSE
+```
+
+```{r}
+all.equal(SSTotal, SSModel + SSE)
+```
+
+```{r}
+n <- NROW(spotify_data)
+n
+```
+
+
+```{r}
+k <- 2
+k
+```
+
+
+```{r}
+r <- rstandard(spotify_lm)
+r[abs(r)>2]
+```
+
+
+
+
+```{r}
+sigma_hat <- sqrt(SSE/(n-k-1))
+```
+
+```{r}
+all.equal(sigma_hat, spotify_glance$sigma)
+```
+
+```{r}
+spotify_tidy
+```
+
+
+```{r}
+spotify_glance
+```
+The t-statistic of 6.600188 with a corresponding p-value of 0.001771802 indicates that the overall model is statistically significant, suggesting that at least one of the independent variables has a significant effect on the dependent variable.
+
+
+
+```{r}
+R2 <- 1 - SSE/SSTotal
+R2
+```
+
+
+
+```{r}
+AdjR2 <- 1 - (SSE/(n-k-1))/(SSTotal/(n-1))
+AdjR2
+```
+
+There is no significant difference between R2 and AdjR2.
+
+
+```{r}
+model <- lm(Popularity ~ Danceability + Explicit.Content, data = spotify_data)
+anova(model)
+
+```
+The ANOVA table presented above indicates the results of the analysis of variance for two predictor variables, Danceability and Explicit.Content, in predicting the Popularity scores. Both variables show significant effects on Popularity. Danceability has a statistically significant effect ( p = 0.022916), as does Explicit.Content ( p = 0.005515).
+
+
+## Test for the presence of interaction between the two explanatory variables both graphically and statistically.
+
+```{r}
+spotify_New <- data.frame(popularity = spotify_data$Popularity ,danceability = spotify_data$Danceability , explicit = spotify_data$Explicit.Content, year = spotify_data$Year )
+spotify_New
+
+```
+
+```{r}
+str(spotify_New)
+```
+
+```{r}
+# Scatterplot with regression line again
+ggplot(spotify_New, aes(x = danceability, y = popularity, color = explicit)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+
+
+
+
+```{r}
+spotify_New_lm <- lm(popularity ~ danceability * explicit, data = spotify_New)
+spotify_New_lm
+```
+$$\hat CESD =  92.943 -47.529 danceability  -7.309 explicit  +  31.479 danceabilityexplicit $$
+
+
+
+```{r}
+spotify_New_tidy <- tidy(spotify_New_lm, conf.int = TRUE)
+spotify_New_tidy
+```
+
+The linear regression model indicates that the estimated popularity score of a track is influenced by its danceability and explicitness. The intercept suggests that when both danceability and explicitness are zero, the estimated popularity score is approximately 92.943. Danceability shows a negative effect on popularity, with each unit increase in danceability associated with a decrease of around 47.529 in popularity, holding explicitness constant. Similarly, explicitness has a negative impact on popularity, with explicit tracks estimated to be approximately 7.309 units less popular compared to non-explicit tracks, holding danceability constant. The interaction effect between danceability and explicitness does not appear to be statistically significant.
+
+
+```{r}
+anova(spotify_New_lm)
+```
+Danceability and Explicit.Content have statistically significant effects on popularity scores, with p-values of 0.023 and 0.006, respectively. These results suggest that changes in Danceability and Explicit.Content are associated with changes in popularity scores. However, the interaction term (Danceability:Explicit) yields a p-value of 0.474, indicating that this interaction does not significantly influence popularity scores
+
+```{r}
+glance(spotify_New_lm)
+```
+
+
+The p-value for the F-test for the overall model is 0.00433, which is less than the significance level of 0.05, indicating that the model significantly explains the variation in the response variable. The adjusted R-squared value of 0.0633 suggests that the model provides a conservative estimate of the proportion of variance explained by the predictors. The sigma value of 23.2353 indicates the standard deviation of the model's residuals, implying the average magnitude of the prediction errors. We reject the null hypothesis that there is no significant relationship between the explanatory variables and response variables.
+
