@@ -11,7 +11,7 @@ The Spotify_Data.csv comprises tracks sourced from the Spotify API, specifically
 
 
 ## Preliminaries
-#libraries
+## libraries
 ```{r}
 library(dplyr)
 library(mosaicData)
@@ -77,6 +77,8 @@ There seems to be non linear relationship.
 ## Multiple Regression 
 
 ## Using a numerical response variable, one numerical explanatory variable, and one categorical explanatory variable. 
+
+## Predict Popularity using Danceability and Explicit.Content
 
 I want to predict Popularity, a numerical response variable, using Danceability, a numerical explanatory variable, and Explicit.Content, a categorical explanatory variable indicating whether the track contains explicit content.
 
@@ -239,7 +241,7 @@ The ANOVA table presented above indicates the results of the analysis of varianc
 ## Test for the presence of interaction between the two explanatory variables both graphically and statistically.
 
 ```{r}
-spotify_New <- data.frame(popularity = spotify_data$Popularity ,danceability = spotify_data$Danceability , explicit = spotify_data$Explicit.Content, year = spotify_data$Year )
+spotify_New <- data.frame(popularity = spotify_data$Popularity ,danceability = spotify_data$Danceability , explicit = spotify_data$Explicit.Content, year = spotify_data$Year, energy = spotify_data$Energy  )
 spotify_New
 
 ```
@@ -263,7 +265,7 @@ ggplot(spotify_New, aes(x = danceability, y = popularity, color = explicit)) +
 spotify_New_lm <- lm(popularity ~ danceability * explicit, data = spotify_New)
 spotify_New_lm
 ```
-$$\hat CESD =  92.943 -47.529 danceability  -7.309 explicit  +  31.479 danceabilityexplicit $$
+$$\hat Popularity =  92.943 -47.529 danceability  -7.309 explicit  +  31.479 danceabilityexplicit $$
 
 
 
@@ -287,3 +289,171 @@ glance(spotify_New_lm)
 
 The p-value for the F-test for the overall model is 0.00433, which is less than the significance level of 0.05, indicating that the model significantly explains the variation in the response variable. The adjusted R-squared value of 0.0633 suggests that the model provides a conservative estimate of the proportion of variance explained by the predictors. The sigma value of 23.2353 indicates the standard deviation of the model's residuals, implying the average magnitude of the prediction errors. We reject the null hypothesis that there is no significant relationship between the explanatory variables and response variables.
 
+## Null hypothesis (H0): There is no significant difference in mean popularity scores across different years.
+# Multiple regression
+
+```{r}
+spotify_lm_years <- lm(Popularity ~ Year, data = spotify_data)
+spotify_tidy_years <- tidy(spotify_lm_years, conf.int = TRUE)
+spotify_tidy_years
+
+```
+# Augment data
+```{r}
+spotify_data_aug_years <- augment(spotify_lm_years)
+spotify_data_aug_years
+```
+
+# Scatterplot with regression line for Year
+```{r}
+ggplot(spotify_data, aes(x = Year, y = Popularity)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+## Interpret the ANOVA table for the model.
+
+```{r}
+spotify_lm_years <- lm(Popularity ~ Year, data = spotify_data)
+anova(spotify_lm_years)
+```
+
+The analysis of variance (ANOVA) table for predicting popularity scores using the Year variable as the explanatory factor reveals a significant relationship between the year of release and the popularity of tracks. With a highly significant F-value (F = 32.392, p < 0.001), the Year variable demonstrates a substantial impact on track popularity. The model suggests that newer releases tend to garner higher popularity scores compared to older tracks. 
+
+```{r}
+spotify_years_aug <- augment(spotify_lm_years)
+spotify_years_aug
+```
+
+
+```{r}
+spotify_glance <- glance(spotify_lm_years)
+spotify_glance
+```
+
+
+## Predict Popularity using Energy and Year
+
+I want to predict Popularity, a numerical response variable, using  Energy, a numerical explanatory variable, and Year, a categorical explanatory variable indicating whether the track contains explicit content.
+
+```{r}
+# Perform multiple regression
+spotify_lm2 <- lm(Popularity ~ Energy + Year, data = spotify_data)
+spotify_lm2
+```
+
+```{r}
+spotify_tidy2 <- tidy(spotify_lm2, conf.int = TRUE)
+spotify_tidy2
+```
+
+## Check scatterplots and residual plots. (But even if the scatterplots and residual plots show that a multiple regression analysis is inappropriate, go ahead and run the analysis anyway.)
+
+```{r}
+# Scatterplot with regression line for Danceability
+ggplot(spotify_data, aes(x = Energy, y = Popularity)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+```{r}
+# Scatterplot with regression line for Year
+ggplot(spotify_data, aes(x = Year, y = Popularity, color = Year)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+```{r}
+# Boxplot for Year
+ggplot(spotify_data, aes(x = Year, y = Popularity, color = Year)) +
+  geom_boxplot()
+```
+
+```{r}
+# Residual plots
+ggplot(spotify_data_aug, aes(sample = .resid)) +
+  geom_qq()
+```
+## Interpret the ANOVA table for the model.
+
+```{r}
+spotify_lm2 <- lm(Popularity ~ Energy + Year, data = spotify_data)
+summary(spotify_lm2)
+```
+
+The results suggest that Energy and Year were both statistically significant predictors of Popularity, as evidenced by their respective p-values of 0.947 and <0.001, the latter being less than the conventional threshold of 0.05. This indicates that there is a significant relationship between these variables and Popularity in the dataset. However, the intercept term was also statistically significant with a p-value of <0.001, suggesting a significant relationship between the intercept and Popularity.
+
+The multiple R-squared value is 0.1711, indicating that the model explains approximately 17.11% of the variability in Popularity. However, the adjusted R-squared value, which accounts for the number of predictors in the model, is 0.1604, indicating that the model fit is not strong.
+
+The F-statistic is 16.1 with a p-value of 0.0000004416, indicating that the overall model is statistically significant. This suggests that Energy and Year together have a significant impact on Popularity.
+
+```{r}
+spotify_glance <- glance( spotify_lm2)
+spotify_glance
+```
+
+```{r}
+model <- lm(Popularity ~ Danceability + Explicit.Content, data = spotify_data)
+anova(model)
+```
+
+## Test for the presence of interaction between the two explanatory variables both graphically and statistically
+
+```{r}
+# Scatterplot with regression line again
+ggplot(spotify_New, aes(x = energy, y = popularity, color = year)) +
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+
+
+```{r}
+spotify_New_lm2 <- lm(popularity ~ energy * year, data = spotify_New)
+spotify_New_lm2
+```
+$$\hat Popularity =  28684.686 -12451.299 energy  -14.217 year  +  6.186energyYear $$
+
+```{r}
+spotify_New_tidy2 <- tidy(spotify_New_lm, conf.int = TRUE)
+spotify_New_tidy2
+```
+
+
+The linear regression model output provides insights into the relationship between the popularity scores of tracks on Spotify and their energy levels as well as the year of their release. The intercept suggests that when both energy and year are zero, the estimated popularity score is approximately 28684.686. Energy exhibits a negative effect on popularity, with each unit increase in energy associated with a decrease of around 12451.299 in popularity, holding the year of release constant. Similarly, the year of release demonstrates a negative impact on popularity, with each year increase correlating with a decrease of approximately 14.217 units in popularity, holding energy constant. The interaction effect between energy and the year of release does not appear statistically significant, indicating that their combined influence on popularity scores is negligible.
+
+```{r}
+anova(spotify_New_lm2)
+
+```
+The ANOVA table indicates that the energy variable does not have a statistically significant effect on popularity scores, with a p-value of 0.9310. Conversely, the year variable exhibits a highly significant effect on popularity scores, with a p-value of 0.00000007117, suggesting that changes in the release year are associated with changes in popularity scores. The interaction term between energy and year also lacks statistical significance, with a p-value of 0.5784, indicating that this interaction does not significantly influence popularity scores.
+
+```{r}
+glance(spotify_New_lm2)
+
+```
+The overall model shows a significant relationship between the predictors and the response variable, with a p-value for the F-test of approximately 0.00000177434. The adjusted R-squared value suggests that around 15.67% of the variation in the response variable is explained by the predictors. The sigma value indicates the average magnitude of prediction errors, which is approximately 22.04623. Overall, these results support the idea that the model effectively explains the variation in the response variable
+
+## Findings
+
+Higher danceability tends to be associated with lower popularity scores, suggesting that tracks with more danceable characteristics might not necessarily attract as much popularity.
+
+The presence of explicit content is also linked to lower popularity scores, indicating that tracks with explicit content may have a narrower appeal among listeners.
+
+These findings imply that while danceability and explicit content may contribute to certain music characteristics, they might not always align with broader audience preferences for highly popular tracks.
+
+Newer releases tend to achieve higher popularity scores compared to older tracks, suggesting a trend where contemporary music is more likely to attract listener attention and engagement.
+
+This finding underscores the dynamic nature of music consumption preferences over time, with newer releases potentially benefiting from increased exposure and promotion in the modern digital music landscape.
+
+Energy levels do not exhibit a statistically significant impact on popularity scores, the year of release significantly influences popularity.
+
+Older tracks tend to have lower popularity scores, regardless of their energy levels, highlighting the importance of considering both temporal and intrinsic musical characteristics when assessing popularity on Spotify.
+
+The interaction effect between energy and year is not statistically significant, suggesting that the joint influence of these factors on popularity may not be substantial.
+
+## Conclusion
+
+In summary, we'd typically think that songs with lots of danceable beats and high energy would be have higher popular score. However, my study focused on the top 100 songs each year, and I found something surprising: among these already super popular tracks, those with higher danceability and energy actually seemed to be less popular.This suggests that when it comes to the most popular songs, other factors like lyrics, the artist, or cultural relevance might matter more than just how danceable or energetic a song is. But my study has its limits. 
+
+However, it's important to recognize the limitations of this analysis. Focusing solely on the top 100 songs each year provides a narrow view of music popularity, as it excludes a vast array of other songs with varying degrees of popularity. To gain a more comprehensive understanding, future analyses could explore a broader selection of songs, including those outside the top rankings. Such analyses might reveal different patterns and shed light on how danceability and energy levels influence popularity across the music landscape as a whole.
+
+While my findings challenge conventional assumptions about the relationship between danceability, energy, and popularity within the context of highly ranked songs, further exploration is necessary to fully grasp the complexities of music preference and popularity dynamics.
